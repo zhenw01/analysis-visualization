@@ -1,0 +1,621 @@
+---
+title: 'Main'
+author: "Zhen Wang"
+date: "2024-02-25"
+output: html_document
+---
+
+```{r Data and Libraries}
+library(tidyverse)
+library(readxl)
+library(plotrix)
+library(reshape2)
+library(broom)
+library(purrr)
+library(cowplot)
+
+?read_excel
+AMPAR_HET <- read_excel(path="E:/School/PSL374/Zhen analysis/Data summarized/AMPAR_IO_HET.xlsx")
+AMPAR_WT <- read_excel(path="E:/School/PSL374/Zhen analysis/Data summarized/AMPAR_IO_WT.xlsx")
+LTP_HET <- read_excel(path="E:/School/PSL374/Zhen analysis/Data summarized/LTP_HET.xlsx")
+LTP_WT <- read_excel(path="E:/School/PSL374/Zhen analysis/Data summarized/LTP_WT.xlsx")
+PPF_HET <- read_excel(path="E:/School/PSL374/Zhen analysis/Data summarized/PPF_HET.xlsx")
+PPF_WT <- read_excel(path="E:/School/PSL374/Zhen analysis/Data summarized/PPF_WT.xlsx")
+NMDAR_HET <- read_excel(path="E:/School/PSL374/Zhen analysis/Data summarized/NMDAR_HET.xlsx")
+NMDAR_wT <- read_excel(path="E:/School/PSL374/Zhen analysis/Data summarized/NMDAR_wT.xlsx")
+
+colnames(LTP_WT)
+rownames(LTP_WT)
+sem<- function(x) sd(x)/sqrt(length(x))
+?std.error
+
+LTP_WT<-LTP_WT %>% 
+  mutate(
+    SEM=apply(LTP_WT[-1], 1, std.error)
+    )
+colnames(LTP_WT) <- c("Time", "t1", "t2", "t3", "t4","t5","t6")
+LTP_WT <- LTP_WT %>% 
+  mutate(across(c(t1,t2,t3,t4,t5,t6), ~. * 100))
+LTP_WT <- LTP_WT %>% 
+  rowwise() %>% 
+  mutate(
+    mean=mean(c(t1,t2,t3,t4,t5,t6))
+  )
+LTP_WT
+?melt
+LTP_WT_melt <- melt(LTP_WT, id.vars='Time', variable.name = 'values')
+ LTP_WT_melt
+result_LTP_WT <- LTP_WT_melt[, c('t1','t2',"t3",'t4','t5','t6')]
+colnames(result_LTP_WT) <- c('t1','t2',"t3",'t4','t5','t6')
+result_LTP_WT
+ggplot(LTP_WT, aes(x=Time,y=mean))+geom_point()+geom_errorbar(aes(ymin=mean-SEM, ymax=mean+SEM), width=0.1)
+```
+
+```{r LTP}
+LTP_HET
+colnames(LTP_HET) <- c("Time", "t1", "t2", "t3", "t4","t5","t6")
+LTP_HET <- LTP_HET %>% 
+  mutate(across(c(t1,t2,t3,t4,t5,t6), ~. * 100))
+LTP_HET<-LTP_HET %>% 
+  mutate(
+    SEM=apply(LTP_HET[-1], 1, std.error)
+    )
+LTP_HET <- LTP_HET %>% 
+  rowwise() %>% 
+  mutate(
+    mean=mean(c(t1,t2,t3,t4,t5,t6))
+  )
+ggplot(LTP_HET, aes(x=Time,y=mean))+geom_point()+geom_errorbar(aes(ymin=mean-SEM, ymax=mean+SEM), width=0.1)
+
+LTP_WT <- LTP_WT %>% 
+  mutate(
+    ymin=mean-SEM
+  ) %>% 
+  mutate(
+    ymax=mean+SEM
+  )
+
+ggplot()+
+  geom_point(data=LTP_WT, aes(x=Time,y=mean), color='red')+
+  geom_errorbar(data=LTP_WT, aes(x=Time,ymin=ymin, ymax=ymax), color='red',width=0.1)
+LTP_WT = subset(LTP_WT, select= -c(ymin,ymax))
+df1 <- data.frame(LTP_HET, group="Heterozygous")
+df2 <- data.frame(LTP_WT, group="Wild Type")
+df_LTP<-rbind(df1, df2)
+df
+scatterLTP<-ggplot(df_LTP, aes(x=Time, y=mean, color = group))+
+  geom_point()+
+  scale_color_manual(values = c('Heterozygous' = 'deeppink', 'Wild Type' = 'cornflowerblue'),
+                     name = "GRIN1 Mutation", 
+                     labels = c('Heterozygous', 'Wild Type'))+
+  geom_errorbar(aes(ymin=mean-SEM, ymax=mean+SEM))+
+  labs(
+    x="Time", y="fEPSP Slope %")
+
+LTP_WT_10 <- LTP_WT %>% filter(Time>109)
+LTP_HET_10<- LTP_HET %>% filter(Time>109)
+LTP_WT_10 = subset(LTP_WT_10, select = -c(Time, SEM, mean))
+LTP_HET_10 = subset(LTP_HET_10, select = -c(Time, SEM, mean))
+LTP_HET_10
+LTPhMean <- LTP_HET_10 %>% 
+  rowwise() %>% 
+  mutate(Avg=mean(c(t1,t2,t3,t4,t5,t6))) %>% 
+  ungroup()
+LTPhMean
+LTPwMean <- LTP_WT_10 %>% 
+  rowwise() %>% 
+  mutate(Avg=mean(c(t1,t2,t3,t4,t5,t6))) %>% 
+  ungroup()
+
+LTPmean1 <- data.frame(LTPhMean, group="Heterozygous")
+LTPmean2 <- data.frame(LTPwMean, group="Wild Type")
+df_LTPmean<-rbind(LTPmean1, LTPmean2)
+
+df_LTPmean
+LTP_Data 
+valuesLTP<- c(147.9235, 106.1124)
+barsLTP <- c('Wild Type', 'Heterozygous')
+barLTP <- data.frame(barsLTP=c('Wild Type', 'Heterozygous'), valuesLTP=c(147.9235, 106.1124))
+barsLTP
+colnames(barLTP)<- c('group','values')
+barLTP
+bargraphLTP<-ggplot(barLTP, aes(x=group, y=values, fill=group))+
+  geom_bar(stat='identity')+
+  scale_fill_manual(values = c('Heterozygous' = 'deeppink', 'Wild Type' = 'cornflowerblue'),
+                     name = "GRIN1 Mutation", 
+                     labels = c('Heterozygous', 'Wild Type'))+
+  labs(x='Genotype', y='Average fEPSP Slope %', fill='Genotype')+
+    geom_point(data=df_LTPmean, aes(x=group,y=Avg))
+
+scatterLTP
+bargraphLTP
+t.test(LTP_WT_10, LTP_HET_10)
+ggsave()
+
+graphLTP<-scatterLTP
+file1 <- tempfile("file1", fileext = ".png")
+
+ggsave("LTP.png", plot = scatterLTP)
+ggsave("LTPbar.png", plot = bargraphLTP)
+
+```
+
+
+```{r PPF}
+colnames(PPF_HET)
+PPF_HET
+  Temp_PPF_HET<-PPF_HET %>% 
+  mutate(PPR=R2Slope/R1Slope) %>% 
+  pivot_wider(names_from = ExpNum, values_from= PPR) %>% 
+    subset(select = -c(R1Slope, R2Slope))
+   
+
+df_long <- Temp_PPF_HET %>%
+  gather(key = "time", value = "measurement", -Interval, na.rm = TRUE)
+Het_wide <- df_long %>%
+  group_by(Interval) %>%
+  pivot_wider(names_from = time, values_from = measurement)
+
+df_wide <- df_wide %>%
+  select(-row_id)
+df_wide <- df_wide %>% 
+   rowwise() %>% 
+  mutate(
+    mean=mean(c(t1,t2,t3,t4,t5,t6,t7,t8,t9,t10,t11,t12))) %>% 
+   mutate(SEM=std.error(c_across(t1:t12))) %>% 
+  ungroup()
+
+
+
+colnames(Temp_PPF_WT) <- c("Interval", "t1", "t2", "t3", "t4","t5","t6",'t7','t8','t9','t10','t11','t12')
+  
+Temp_PPF_HET
+PPF_WT<-PPF_WT %>% 
+  mutate(PPR=R2Slope/R1Slope)
+Temp_PPF_WT <- PPF_WT %>% 
+  pivot_wider(names_from = ExpNum, values_from= PPR) %>% 
+    subset(select = -c(R1Slope, R2Slope))
+
+df_long_wt <- Temp_PPF_WT %>%
+  gather(key = "time", value = "measurement", -Interval, na.rm = TRUE)
+WT_wide <- df_long_wt %>%
+  group_by(Interval) %>%
+  pivot_wider(names_from = time, values_from = measurement)
+WT_wide <- WT_wide %>% 
+   rowwise() %>% 
+  mutate(
+    mean=mean(c(t1,t2,t3,t4,t5,t6,t7,t8,t9,t10,t11,t12))) %>% 
+   mutate(SEM=std.error(c_across(t1:t12))) %>% 
+  ungroup()
+
+PPF_HET
+PPF_WT
+
+PPF1 <- data.frame(df_wide, group="Heterozygous")
+PPF2 <- data.frame(WT_wide, group="Wild Type")
+df_PPR<-rbind(PPF1, PPF2)
+
+scatterPPR<-ggplot(df_PPR, aes(x=Interval, y=mean, color = group))+
+  geom_point()+
+  scale_color_manual(values = c('Heterozygous' = 'deeppink', 'Wild Type' = 'cornflowerblue'),
+                     name = "GRIN1 Mutation", 
+                     labels = c('Heterozygous', 'Wild Type'))+
+  geom_errorbar(aes(ymin=mean-SEM, ymax=mean+SEM))+
+  labs(
+    x="Inter-pulse Interval (ms)", y="Paired Pulse Ratio (PPR)")
+
+PPF_test_wt = subset(WT_wide, select = -c(Interval, SEM, mean))
+PPF_test_het = subset(df_wide, select = -c(Interval, SEM, mean))
+
+
+
+scatterPPR
+t.test(PPF_test_het, PPF_test_wt)
+ggsave("PPR.png", plot=scatterPPR)
+```
+
+
+
+```{r NMDA}
+#altering the data
+NMDAR_HET <- NMDAR_HET %>% 
+  mutate(across(c(Fvamp, fEPSP), ~. * -1))
+NMDAR_WT <- NMDAR_wT %>% 
+  mutate(across(c(Fvamp, fEPSP), ~. * -1))
+#reformatting table for graph
+NMDAR_HET_long <- NMDAR_HET %>% 
+   pivot_wider(names_from = ExpNum, values_from= Fvamp) %>% 
+    subset(select = -c(fEPSP))%>%
+  gather(key = "time", value = "measurement", -SweepNum, na.rm = TRUE)
+
+NMDAR_Het_wide <- NMDAR_HET_long %>%
+  group_by(SweepNum) %>%
+  pivot_wider(names_from = time, values_from = measurement)
+ 
+colnames(NMDAR_Het_wide) <- c("StimIntensity", "t1", "t2", "t3", "t4","t5", "t6")
+
+NMDAR_HET_wide <- NMDAR_Het_wide %>% 
+   rowwise() %>% 
+  mutate(
+    mean=mean(c(t1,t2,t3,t4,t5,t6))) %>% 
+   mutate(SEM=std.error(c_across(t1:t6))) %>% 
+  ungroup()
+
+NMDAR_WT_long <- NMDAR_WT %>% 
+   pivot_wider(names_from = ExpNum, values_from= Fvamp) %>% 
+    subset(select = -c(fEPSP))%>%
+  gather(key = "time", value = "measurement", -SweepNum, na.rm = TRUE)
+ 
+NMDAR_WT_wide <- NMDAR_WT_long %>%
+  group_by(SweepNum) %>%
+  pivot_wider(names_from = time, values_from = measurement)
+ 
+colnames(NMDAR_WT_wide) <- c("StimIntensity", "t1", "t2", "t3", "t4","t5", "t6")
+
+NMDAR_WT_wide <- NMDAR_WT_wide %>% 
+   rowwise() %>% 
+  mutate(
+    mean=mean(c(t1,t2,t3,t4,t5,t6))) %>% 
+   mutate(SEM=std.error(c_across(t1:t6))) %>% 
+  ungroup()
+ 
+ 
+NMDARFV1 <- data.frame(NMDAR_HET_wide, group="Heterozygous")
+NMDARFV2 <- data.frame(NMDAR_WT_wide, group="Wild Type")
+df_NMDARFV<-rbind(NMDARFV1, NMDARFV2)
+ 
+scatterNMDARFV<-ggplot(df_NMDARFV, aes(x=StimIntensity, y=mean, color = group))+
+  geom_point()+
+  scale_color_manual(values = c('Heterozygous' = 'deeppink', 'Wild Type' = 'cornflowerblue'),
+                     name = "GRIN1 Mutation", 
+                     labels = c('Heterozygous', 'Wild Type'))+
+geom_errorbar(aes(ymin=mean-SEM, ymax=mean+SEM), width=0.1)+
+  labs(
+    x="Stimulation Intensity (x threshold)", y="Fibre Volley")
+ 
+#Linear regression and comparing slopes of FV from individual experiments
+
+NMDAR_HET_slopes <- NMDAR_HET %>%
+  group_by(ExpNum) %>%
+  nest()
+
+NMDAR_HET_LR <- NMDAR_HET_slopes %>%
+  mutate(model = map(data, ~lm(Fvamp ~ SweepNum, data = .)),
+         tidied = map(model, tidy))
+ 
+N_HET_Slopes<-NMDAR_HET_LR %>%
+  unnest(tidied) %>%
+  select(ExpNum, term, estimate) %>%
+  filter(term == "SweepNum")
+
+
+NMDAR_WT_slopes <- NMDAR_WT %>%
+  group_by(ExpNum) %>%
+  nest()
+
+NMDAR_WT_LR <- NMDAR_WT_slopes %>%
+  mutate(model = map(data, ~lm(Fvamp ~ SweepNum, data = .)),
+         tidied = map(model, tidy))
+ 
+N_WT_Slopes<-NMDAR_WT_LR %>%
+  unnest(tidied) %>%
+  select(ExpNum, term, estimate) %>%
+  filter(term == "SweepNum")
+
+
+FVttestNMDAR<-t.test(N_WT_Slopes$estimate,N_HET_Slopes$estimate)
+
+print(N_WT_Slopes)
+NMDARReg1 <- data.frame(N_HET_Slopes, group="Heterozygous")
+NMDARReg2 <- data.frame(N_WT_Slopes, group="Wild Type")
+df_NMDARReg<-rbind(NMDARReg1, NMDARReg2)
+df_NMDARReg
+NMDARmean_hetero <- data.frame(mean(df_NMDARReg[df_NMDARReg$group == 'Heterozygous', "estimate"]))
+NMDARmean_wild <- data.frame(mean(df_NMDARReg[df_NMDARReg$group == 'Wild Type', "estimate"]))
+colnames(NMDARmean_wild) <-"estimate"
+colnames(NMDARmean_hetero) <-"estimate"
+NMDARmeans<- rbind(NMDARmean_hetero, NMDARmean_wild)
+NMDARmeans$group <- c('Heterozygous', "Wild Type")
+NMDARmeans$SEM <- c(std.error(df_NMDARReg[df_NMDARReg$group == 'Heterozygous', "estimate"]), std.error(df_NMDARReg[df_NMDARReg$group == 'Wild Type', "estimate"]))
+NMDARmeans
+NMDARReg1 <- data.frame(NMDAR_HET, group="Heterozygous")
+NMDARReg2 <- data.frame(NMDAR_WT, group="Wild Type")
+NMDARReg1
+NMDARFVbar <- ggplot(NMDARmeans, aes(x=group,y=estimate, fill=group))+
+  geom_bar(stat='Identity')+
+  scale_fill_manual(values = c('Heterozygous' = 'deeppink', 'Wild Type' = 'cornflowerblue'),
+                     name = "GRIN1 Mutation", 
+                     labels = c('Heterozygous', 'Wild Type'))+
+  geom_errorbar(aes(ymin=estimate-SEM, ymax=estimate+SEM), width=0.5)+
+    geom_point(data=df_NMDARReg, aes(x=group,y=estimate))+
+  labs(x="Genotype", y="Linear Regression Slope")
+
+t.test(NMDARReg1$estimate,NMDARReg2$estimate)
+
+#Doing it for FV vs fEPSP
+NMDARfEPSP1 <- data.frame(NMDAR_HET, group="Heterozygous")
+NMDARfEPSP2 <- data.frame(NMDAR_WT, group="Wild Type")
+df_NMDARfEPSP<-rbind(NMDARfEPSP1, NMDARfEPSP2)
+
+scatterNMDARfEPSP<-ggplot(df_NMDARfEPSP, aes(x=Fvamp, y=fEPSP, color=group))+
+  geom_point(stat='Identity')+
+  labs(y='fEPSP Amplitude', x='FV amplitude')+
+  scale_color_manual(values = c('Heterozygous' = 'deeppink', 'Wild Type' = 'cornflowerblue'),
+                     name = "GRIN1 Mutation", 
+                     labels = c('Heterozygous', 'Wild Type'))+
+  geom_smooth(method = "lm", se=FALSE)
+
+
+NMDAR_HET_slopes <- NMDAR_HET %>%
+  group_by(ExpNum) %>%
+  nest()
+
+NMDAR_HET_LR_fEPSP <- NMDAR_HET_slopes %>%
+  mutate(model = map(data, ~lm(fEPSP ~ Fvamp, data = .)),
+         tidied = map(model, tidy))
+ 
+N_HET_SlopesfEPSP<-NMDAR_HET_LR_fEPSP %>%
+  unnest(tidied) %>%
+  select(ExpNum, term, estimate) %>%
+  filter(term == "Fvamp")
+
+
+NMDAR_WT_slopes <- NMDAR_WT %>%
+  group_by(ExpNum) %>%
+  nest()
+
+NMDAR_WT_LRfEPSP <- NMDAR_WT_slopes %>%
+  mutate(model = map(data, ~lm(fEPSP ~ Fvamp, data = .)),
+         tidied = map(model, tidy))
+ 
+N_WT_SlopesfEPSP<-NMDAR_WT_LRfEPSP %>%
+  unnest(tidied) %>%
+  select(ExpNum, term, estimate) %>%
+  filter(term == "Fvamp")
+
+
+FVttestfEPSPNMDAR<-t.test(N_WT_SlopesfEPSP$estimate,N_HET_SlopesfEPSP$estimate)
+
+print(N_WT_SlopesfEPSP)
+NMDARReg1fEPSP <- data.frame(N_HET_SlopesfEPSP, group="Heterozygous")
+NMDARReg2fEPSP <- data.frame(N_WT_SlopesfEPSP, group="Wild Type")
+df_NMDARRegfEPSP<-rbind(NMDARReg1fEPSP, NMDARReg2fEPSP)
+df_NMDARRegfEPSP
+NMDARmean_hetero_fEPSP <- data.frame(mean(df_NMDARRegfEPSP[df_NMDARRegfEPSP$group == 'Heterozygous', "estimate"]))
+NMDARmean_wild_fEPSP <- data.frame(mean(df_NMDARRegfEPSP[df_NMDARRegfEPSP$group == 'Wild Type', "estimate"]))
+colnames(NMDARmean_wild_fEPSP) <-"estimate"
+colnames(NMDARmean_hetero_fEPSP) <-"estimate"
+NMDARmeansfEPSP<- rbind(NMDARmean_hetero_fEPSP, NMDARmean_wild_fEPSP)
+NMDARmeansfEPSP$group <- c('Heterozygous', "Wild Type")
+NMDARmeansfEPSP$SEM <- c(std.error(df_NMDARRegfEPSP[df_NMDARRegfEPSP$group == 'Heterozygous', "estimate"]), std.error(df_NMDARRegfEPSP[df_NMDARRegfEPSP$group == 'Wild Type', "estimate"]))
+NMDARmeansfEPSP
+NMDARfEPSPbar<- ggplot(NMDARmeansfEPSP, aes(x=group,y=estimate, fill=group))+
+  geom_bar(stat='Identity')+
+  scale_fill_manual(values = c('Heterozygous' = 'deeppink', 'Wild Type' = 'cornflowerblue'),
+                     name = "GRIN1 Mutation", 
+                     labels = c('Heterozygous', 'Wild Type'))+
+  geom_errorbar(aes(ymin=estimate-SEM, ymax=estimate+SEM), width=0.5)+
+    geom_point(data=df_NMDARRegfEPSP, aes(x=group,y=estimate))+
+  labs(x="Genotype", y="Linear Regression Slope")
+
+
+
+
+
+#Final products
+scatterNMDARFV
+FVttestNMDAR
+NMDARFVbar
+scatterNMDARfEPSP
+NMDARfEPSPbar
+FVttestfEPSPNMDAR
+graphNMDA<-plot_grid(scatterNMDARFV, NMDARFVbar, scatterNMDARfEPSP, NMDARfEPSPbar, labels=c('A','B','C','D'))
+file1 <- tempfile("file1", fileext = ".png")
+
+ggsave("NMDA.png", plot = graphNMDA, width = 10)
+```
+
+
+
+```{r AMPAR}
+
+AMPAR_HET <- AMPAR_HET %>% 
+  mutate(across(c(Fvamp, fEPSP), ~. * -1))
+AMPAR_WT <- AMPAR_WT %>% 
+  mutate(across(c(Fvamp, fEPSP), ~. * -1))
+#reformatting table for graph
+AMPAR_HET_long <- AMPAR_HET %>% 
+   pivot_wider(names_from = ExpNum, values_from= Fvamp) %>% 
+    subset(select = -c(fEPSP))%>%
+  gather(key = "time", value = "measurement", -SweepNum, na.rm = TRUE)
+
+AMPAR_Het_wide <- AMPAR_HET_long %>%
+  group_by(SweepNum) %>%
+  pivot_wider(names_from = time, values_from = measurement)
+ 
+colnames(AMPAR_Het_wide) <- c("StimIntensity", "t1", "t2", "t3", "t4","t5","t6",'t7','t8','t9','t10','t11','t12')
+
+AMPAR_HET_wide <- AMPAR_Het_wide %>% 
+   rowwise() %>% 
+  mutate(
+    mean=mean(c(t1,t2,t3,t4,t5,t6,t7,t8,t9,t10,t11,t12))) %>% 
+   mutate(SEM=std.error(c_across(t1:t12))) %>% 
+  ungroup()
+
+AMPAR_WT_long <- AMPAR_WT %>% 
+   pivot_wider(names_from = ExpNum, values_from= Fvamp) %>% 
+    subset(select = -c(fEPSP))%>%
+  gather(key = "time", value = "measurement", -SweepNum, na.rm = TRUE)
+ 
+AMPAR_WT_wide <- AMPAR_WT_long %>%
+  group_by(SweepNum) %>%
+  pivot_wider(names_from = time, values_from = measurement)
+ 
+colnames(AMPAR_WT_wide) <- c("StimIntensity", "t1", "t2", "t3", "t4","t5","t6",'t7','t8','t9','t10','t11','t12')
+
+AMPAR_WT_wide <- AMPAR_WT_wide %>% 
+   rowwise() %>% 
+  mutate(
+    mean=mean(c(t1,t2,t3,t4,t5,t6,t7,t8,t9,t10,t11,t12))) %>% 
+   mutate(SEM=std.error(c_across(t1:t12))) %>% 
+  ungroup()
+ 
+ 
+AMPARFV1 <- data.frame(AMPAR_HET_wide, group="Heterozygous")
+AMPARFV2 <- data.frame(AMPAR_WT_wide, group="Wild Type")
+df_AMPARFV<-rbind(AMPARFV1, AMPARFV2)
+ 
+scatterAMPARFV<-ggplot(df_AMPARFV, aes(x=StimIntensity, y=mean, color = group))+
+  geom_point()+
+  scale_color_manual(values = c('Heterozygous' = 'deeppink', 'Wild Type' = 'cornflowerblue'),
+                     name = "GRIN1 Mutation", 
+                     labels = c('Heterozygous', 'Wild Type'))+
+geom_errorbar(aes(ymin=mean-SEM, ymax=mean+SEM), width=0.1)+
+  labs(
+    x="Stimulation Intensity (x threshold)", y="FV Amplitude")
+ 
+#Linear regression and comparing slopes of FV from individual experiments
+
+AMPAR_HET_slopes <- AMPAR_HET %>%
+  group_by(ExpNum) %>%
+  nest()
+
+AMPAR_HET_LR <- AMPAR_HET_slopes %>%
+  mutate(model = map(data, ~lm(Fvamp ~ SweepNum, data = .)),
+         tidied = map(model, tidy))
+ 
+N_HET_Slopes<-AMPAR_HET_LR %>%
+  unnest(tidied) %>%
+  select(ExpNum, term, estimate) %>%
+  filter(term == "SweepNum")
+
+
+AMPAR_WT_slopes <- AMPAR_WT %>%
+  group_by(ExpNum) %>%
+  nest()
+
+AMPAR_WT_LR <- AMPAR_WT_slopes %>%
+  mutate(model = map(data, ~lm(Fvamp ~ SweepNum, data = .)),
+         tidied = map(model, tidy))
+ 
+N_WT_Slopes<-AMPAR_WT_LR %>%
+  unnest(tidied) %>%
+  select(ExpNum, term, estimate) %>%
+  filter(term == "SweepNum")
+
+
+FVttestAMPAR<-t.test(N_WT_Slopes$estimate,N_HET_Slopes$estimate)
+
+print(N_WT_Slopes)
+AMPARReg1 <- data.frame(N_HET_Slopes, group="Heterozygous")
+AMPARReg2 <- data.frame(N_WT_Slopes, group="Wild Type")
+df_AMPARReg<-rbind(AMPARReg1, AMPARReg2)
+df_AMPARReg
+AMPARmean_hetero <- data.frame(mean(df_AMPARReg[df_AMPARReg$group == 'Heterozygous', "estimate"]))
+AMPARmean_wild <- data.frame(mean(df_AMPARReg[df_AMPARReg$group == 'Wild Type', "estimate"]))
+colnames(AMPARmean_wild) <-"estimate"
+colnames(AMPARmean_hetero) <-"estimate"
+AMPARmeans<- rbind(AMPARmean_hetero, AMPARmean_wild)
+AMPARmeans$group <- c('Heterozygous', "Wild Type")
+AMPARmeans$SEM <- c(std.error(df_AMPARReg[df_AMPARReg$group == 'Heterozygous', "estimate"]), std.error(df_AMPARReg[df_AMPARReg$group == 'Wild Type', "estimate"]))
+AMPARmeans
+AMPARReg1 <- data.frame(AMPAR_HET, group="Heterozygous")
+AMPARReg2 <- data.frame(AMPAR_WT, group="Wild Type")
+AMPARReg1
+AMPARFVbar <- ggplot(AMPARmeans, aes(x=group,y=estimate, fill=group))+
+  geom_bar(stat='Identity')+
+  scale_fill_manual(values = c('Heterozygous' = 'deeppink', 'Wild Type' = 'cornflowerblue'),
+                     name = "GRIN1 Mutation", 
+                     labels = c('Heterozygous', 'Wild Type'))+
+  geom_errorbar(aes(ymin=estimate-SEM, ymax=estimate+SEM), width=0.5)+
+    geom_point(data=df_AMPARReg, aes(x=group,y=estimate))+
+  labs(x="Genotype", y="Linear Regression Slope")
+
+
+
+#Doing it for FV vs fEPSP
+AMPARfEPSP1 <- data.frame(AMPAR_HET, group="Heterozygous")
+AMPARfEPSP2 <- data.frame(AMPAR_WT, group="Wild Type")
+df_AMPARfEPSP<-rbind(AMPARfEPSP1, AMPARfEPSP2)
+
+scatterAMPARfEPSP<-ggplot(df_AMPARfEPSP, aes(x=Fvamp, y=fEPSP, color=group))+
+  geom_point(stat='Identity')+
+  labs(y='fEPSP Amplitude', x='FV amplitude')+
+  scale_color_manual(values = c('Heterozygous' = 'deeppink', 'Wild Type' = 'cornflowerblue'),
+                     name = "GRIN1 Mutation", 
+                     labels = c('Heterozygous', 'Wild Type'))+
+  geom_smooth(method = "lm", se=FALSE)
+
+
+AMPAR_HET_slopes <- AMPAR_HET %>%
+  group_by(ExpNum) %>%
+  nest()
+
+AMPAR_HET_LR_fEPSP <- AMPAR_HET_slopes %>%
+  mutate(model = map(data, ~lm(fEPSP ~ Fvamp, data = .)),
+         tidied = map(model, tidy))
+ 
+N_HET_SlopesfEPSP<-AMPAR_HET_LR_fEPSP %>%
+  unnest(tidied) %>%
+  select(ExpNum, term, estimate) %>%
+  filter(term == "Fvamp")
+
+
+AMPAR_WT_slopes <- AMPAR_WT %>%
+  group_by(ExpNum) %>%
+  nest()
+
+AMPAR_WT_LRfEPSP <- AMPAR_WT_slopes %>%
+  mutate(model = map(data, ~lm(fEPSP ~ Fvamp, data = .)),
+         tidied = map(model, tidy))
+ 
+N_WT_SlopesfEPSP<-AMPAR_WT_LRfEPSP %>%
+  unnest(tidied) %>%
+  select(ExpNum, term, estimate) %>%
+  filter(term == "Fvamp")
+
+
+FVttestfEPSPAMPAR<-t.test(N_WT_SlopesfEPSP$estimate,N_HET_SlopesfEPSP$estimate)
+
+print(N_WT_SlopesfEPSP)
+AMPARReg1fEPSP <- data.frame(N_HET_SlopesfEPSP, group="Heterozygous")
+AMPARReg2fEPSP <- data.frame(N_WT_SlopesfEPSP, group="Wild Type")
+df_AMPARRegfEPSP<-rbind(AMPARReg1fEPSP, AMPARReg2fEPSP)
+df_AMPARRegfEPSP
+AMPARmean_hetero_fEPSP <- data.frame(mean(df_AMPARRegfEPSP[df_AMPARRegfEPSP$group == 'Heterozygous', "estimate"]))
+AMPARmean_wild_fEPSP <- data.frame(mean(df_AMPARRegfEPSP[df_AMPARRegfEPSP$group == 'Wild Type', "estimate"]))
+colnames(AMPARmean_wild_fEPSP) <-"estimate"
+colnames(AMPARmean_hetero_fEPSP) <-"estimate"
+AMPARmeansfEPSP<- rbind(AMPARmean_hetero_fEPSP, AMPARmean_wild_fEPSP)
+AMPARmeansfEPSP$group <- c('Heterozygous', "Wild Type")
+AMPARmeansfEPSP$SEM <- c(std.error(df_AMPARRegfEPSP[df_AMPARRegfEPSP$group == 'Heterozygous', "estimate"]), std.error(df_AMPARRegfEPSP[df_AMPARRegfEPSP$group == 'Wild Type', "estimate"]))
+AMPARmeansfEPSP
+AMPARfEPSPbar<- ggplot(AMPARmeansfEPSP, aes(x=group,y=estimate, fill=group))+
+  geom_bar(stat='Identity')+
+  scale_fill_manual(values = c('Heterozygous' = 'deeppink', 'Wild Type' = 'cornflowerblue'),
+                     name = "GRIN1 Mutation", 
+                     labels = c('Heterozygous', 'Wild Type'))+
+  geom_errorbar(aes(ymin=estimate-SEM, ymax=estimate+SEM), width=0.5)+
+    geom_point(data=df_AMPARRegfEPSP, aes(x=group,y=estimate))+
+  labs(y="Slope of FV amplitude", x="Genotype")
+
+
+
+
+
+#Final products
+scatterAMPARFV
+FVttestAMPAR
+AMPARFVbar
+scatterAMPARfEPSP
+AMPARfEPSPbar
+FVttestfEPSPAMPAR
+
+graphAMPA<-plot_grid(scatterAMPARFV, AMPARFVbar, scatterAMPARfEPSP, AMPARfEPSPbar, labels=c('A','B','C','D'))
+file1 <- tempfile("file1", fileext = ".png")
+
+ggsave("AMPA.png", plot = graphAMPA, width = 10)
+```
+
+
+
